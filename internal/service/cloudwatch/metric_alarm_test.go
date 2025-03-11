@@ -13,6 +13,7 @@ import (
 	sdkacctest "github.com/hashicorp/terraform-plugin-testing/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
+
 	"github.com/hashicorp/terraform-provider-aws/internal/acctest"
 	"github.com/hashicorp/terraform-provider-aws/internal/conns"
 	tfcloudwatch "github.com/hashicorp/terraform-provider-aws/internal/service/cloudwatch"
@@ -604,6 +605,24 @@ func TestAccCloudWatchMetricAlarm_disappears(t *testing.T) {
 	})
 }
 
+func TestAccCloudWatchMetricAlarm_expressionAndMetric(t *testing.T) {
+	ctx := acctest.Context(t)
+	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:                 func() { acctest.PreCheck(ctx, t) },
+		ErrorCheck:               acctest.ErrorCheck(t, names.CloudWatchServiceID),
+		ProtoV5ProviderFactories: acctest.ProtoV5ProviderFactories,
+		CheckDestroy:             testAccCheckMetricAlarmDestroy(ctx),
+		Steps: []resource.TestStep{
+			{
+				Config:      testAccMetricAlarmConfig_metricAndExpressionError(rName),
+				ExpectError: regexache.MustCompile("test"),
+			},
+		},
+	})
+}
+
 func testAccCheckMetricAlarmExists(ctx context.Context, n string, v *types.MetricAlarm) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
@@ -614,7 +633,6 @@ func testAccCheckMetricAlarmExists(ctx context.Context, n string, v *types.Metri
 		conn := acctest.Provider.Meta().(*conns.AWSClient).CloudWatchClient(ctx)
 
 		output, err := tfcloudwatch.FindMetricAlarmByName(ctx, conn, rs.Primary.ID)
-
 		if err != nil {
 			return err
 		}
@@ -1132,6 +1150,32 @@ resource "aws_cloudwatch_metric_alarm" "test" {
 
   dimensions = {
     InstanceId = "i-abcd1234"
+  }
+}
+`, rName)
+}
+
+func testAccMetricAlarmConfig_metricAndExpressionError(rName string) string {
+	return fmt.Sprintf(`
+resource "aws_cloudwatch_metric_alarm" "test" {
+  alarm_name          = %[1]q
+  alarm_description   = "metric + expression defined at the same time"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  threshold						= 90
+  treat_missing_data	= "missing"
+
+  metric_query {
+    id          = "high1"
+    return_data = false
+		expression  = "SELECT AVG(CPUUtilization) FROM AWS/EC2 GROUP BY InstanceId"
+		period = 10
+    metric {
+      metric_name = "CPUUtilization"
+      namespace   = "AWS/EC2"
+      period     = 10
+      stat       = "Average"
+    }
   }
 }
 `, rName)

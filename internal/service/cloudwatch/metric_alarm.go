@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+
 	"github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"github.com/hashicorp/terraform-provider-aws/internal/enum"
 	"github.com/hashicorp/terraform-provider-aws/internal/errs"
@@ -31,7 +32,7 @@ import (
 // @Tags(identifierAttribute="arn")
 // @Testing(existsType="github.com/aws/aws-sdk-go-v2/service/cloudwatch/types;awstypes;awstypes.MetricAlarm")
 func resourceMetricAlarm() *schema.Resource {
-	//lintignore:R011
+	// lintignore:R011
 	return &schema.Resource{
 		CreateWithoutTimeout: resourceMetricAlarmCreate,
 		ReadWithoutTimeout:   resourceMetricAlarmRead,
@@ -144,9 +145,10 @@ func resourceMetricAlarm() *schema.Resource {
 							ValidateFunc: validation.StringLenBetween(1, 255),
 						},
 						names.AttrExpression: {
-							Type:         schema.TypeString,
-							Optional:     true,
-							ValidateFunc: validation.StringLenBetween(1, 1024),
+							Type:          schema.TypeString,
+							Optional:      true,
+							ValidateFunc:  validation.StringLenBetween(1, 1024),
+							ConflictsWith: []string{"metric"},
 						},
 						names.AttrID: {
 							Type:         schema.TypeString,
@@ -206,6 +208,7 @@ func resourceMetricAlarm() *schema.Resource {
 									},
 								},
 							},
+							ConflictsWith: []string{names.AttrExpression},
 						},
 						"label": {
 							Type:     schema.TypeString,
@@ -343,7 +346,6 @@ func resourceMetricAlarmCreate(ctx context.Context, d *schema.ResourceData, meta
 	// For partitions not supporting tag-on-create, attempt tag after create.
 	if tags := getTagsIn(ctx); input.Tags == nil && len(tags) > 0 {
 		alarm, err := findMetricAlarmByName(ctx, conn, d.Id())
-
 		if err != nil {
 			return sdkdiag.AppendErrorf(diags, "reading CloudWatch Metric Alarm (%s): %s", d.Id(), err)
 		}
@@ -423,7 +425,6 @@ func resourceMetricAlarmUpdate(ctx context.Context, d *schema.ResourceData, meta
 		input := expandPutMetricAlarmInput(ctx, d)
 
 		_, err := conn.PutMetricAlarm(ctx, input)
-
 		if err != nil {
 			return sdkdiag.AppendErrorf(diags, "updating CloudWatch Metric Alarm (%s): %s", d.Id(), err)
 		}
@@ -460,7 +461,6 @@ func findMetricAlarmByName(ctx context.Context, conn *cloudwatch.Client, name st
 	}
 
 	output, err := conn.DescribeAlarms(ctx, input)
-
 	if err != nil {
 		return nil, err
 	}
