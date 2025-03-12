@@ -134,9 +134,9 @@ func resourceMetricAlarm() *schema.Resource {
 				ValidateFunc:  validation.StringLenBetween(1, 255),
 			},
 			"metric_query": {
-				Type:          schema.TypeSet,
-				Optional:      true,
-				ConflictsWith: []string{names.AttrMetricName},
+				Type:         schema.TypeSet,
+				Optional:     true,
+				ValidateFunc: validMetricQuery,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						names.AttrAccountID: {
@@ -208,7 +208,6 @@ func resourceMetricAlarm() *schema.Resource {
 									},
 								},
 							},
-							ConflictsWith: []string{names.AttrExpression},
 						},
 						"label": {
 							Type:     schema.TypeString,

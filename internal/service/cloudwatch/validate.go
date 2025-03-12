@@ -40,3 +40,19 @@ func validEC2AutomateARN(v interface{}, k string) (ws []string, errors []error) 
 
 	return
 }
+
+func validMetricQuery(v interface{}, k string) (ws []string, errors []error) {
+	value := v.([]interface{})
+	for _, metric_query := range value {
+		m := metric_query.(map[string]interface{})
+		expr := m["expression"]
+		metric := m["metric"]
+
+		if expr != nil && metric != nil {
+			errors = append(errors, fmt.Errorf(
+				"Expresssion and metric can't be defined simultaneously",
+			))
+		}
+	}
+	return
+}
